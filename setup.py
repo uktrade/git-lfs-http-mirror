@@ -8,7 +8,7 @@ def long_description():
 
 setuptools.setup(
     name='git-lfs-http-mirror',
-    version='0.0.0',
+    version='0.0.1',
     author='Department for International Trade',
     author_email='sre@digital.trade.gov.uk',
     description='Simple Python server to serve a read only HTTP mirror of git repositories that use Large File Storage (LFS)',
