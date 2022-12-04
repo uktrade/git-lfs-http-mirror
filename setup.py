@@ -23,7 +23,7 @@ setuptools.setup(
     python_requires='>=3.7.4',
     install_requires=[
         'httpx>=0.23.1',
-        'hypercorn=>0.14.3',
+        'hypercorn>=0.14.3',
         'quart>=0.18.3',
     ],
     py_modules=[
