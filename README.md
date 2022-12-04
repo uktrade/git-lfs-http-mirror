@@ -19,7 +19,7 @@ Configuration is by environment variables
 ```bash
 UPSTREAM_ROOT='https://my-bucket.s3.eu-west-2.amazonaws.com/a-folder' \
 LOG_LEVEL=INFO \
-PORT=8888 \
+BIND='0.0.0.0:8080' \
     python -m git_lfs_http_mirror
 ```
 
