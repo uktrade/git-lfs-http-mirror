@@ -22,9 +22,9 @@ setuptools.setup(
     ],
     python_requires='>=3.7.4',
     install_requires=[
-        'flask>=2.2.2',
         'httpx>=0.23.1',
-        'waitress>=2.1.2',
+        'hypercorn=>0.14.3',
+        'quart>=0.18.3',
     ],
     py_modules=[
         'git_lfs_http_mirror',

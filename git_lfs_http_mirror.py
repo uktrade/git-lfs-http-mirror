@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -5,10 +6,11 @@ import string
 import sys
 
 import httpx
-from flask import Flask, Response, render_template
-from flask import request
+from hypercorn.config import Config
+from hypercorn.asyncio import serve
+from quart import Quart, Response
+from quart import request
 from random import choices
-from waitress import serve
 
 
 def App(logger, http_client, upstream_root, app_name):
@@ -17,23 +19,24 @@ def App(logger, http_client, upstream_root, app_name):
     def get_new_request_id():
         return ''.join(choices(request_id_alphabet, k=8))
 
-    app = Flask(app_name)
+    app = Quart(app_name)
 
     @app.route('/', defaults={'path': ''}, methods=['GET', 'POST'])
     @app.route('/<path:path>', methods=['GET', 'POST'])
-    def handle(path):
+    async def handle(path):
         request_id = get_new_request_id()
         request_method = request.method
         logger.info('[%s] Downstream request %s %s', request_id, request_method, path)
 
         return \
-            handle_lfs_batch(request_id, request_method, path) if path.endswith('.git/info/lfs/objects/batch') else \
-            handle_proxy(request_id, request_method, path)
+            await handle_lfs_batch(request_id, request_method, path) if path.endswith('.git/info/lfs/objects/batch') else \
+            await handle_proxy(request_id, request_method, path)
 
 
-    def handle_lfs_batch(request_id, request_method, path):
-        logger.info('[%s,%s,%s] %s', request_id, request_method, path, request.data)
-        data = json.loads(request.data)
+    async def handle_lfs_batch(request_id, request_method, path):
+        data = await request.data
+        logger.info('[%s,%s,%s] %s', request_id, request_method, path, data)
+        data = json.loads(data)
 
         lfs_batch_data =  {
             "transfer": "basic",
@@ -54,18 +57,18 @@ def App(logger, http_client, upstream_root, app_name):
         logger.info('[%s,%s,%s] %s', request_id, request_method, path, lfs_batch_data)
         return lfs_batch_data
 
-    def handle_proxy(request_id, request_method, path):
+    async def handle_proxy(request_id, request_method, path):
 
         upstream_request = http_client.build_request(request.method, upstream_root + '/' + path)
         logger.info('[%s,%s,%s] Upstream request: %s', request_id, request_method, path, upstream_request)
 
-        upstream_response = http_client.send(upstream_request, stream=True)
+        upstream_response = await http_client.send(upstream_request, stream=True)
         logger.info('[%s,%s,%s] Upstream response: %s', request_id, request_method, path, upstream_response)
 
-        def downstream_response_bytes():
+        async def downstream_response_bytes():
             l = 0
             remaining_until_log = 10000000
-            for chunk in upstream_response.iter_bytes(65536):
+            async for chunk in upstream_response.aiter_bytes(65536):
                 l += len(chunk)
                 remaining_until_log -= len(chunk)
                 if remaining_until_log <= 0:
@@ -74,28 +77,15 @@ def App(logger, http_client, upstream_root, app_name):
                 yield chunk
             logger.info('[%s,%s,%s] Downstream response: %s bytes total', request_id, request_method, path, l)
 
-        def close_upstream_response():
-            upstream_response.close()
-            logger.info('[%s,%s,%s] Downstream response: closed', request_id, request_method, path)
-
-        downstream_response = Response(
-            downstream_response_bytes(),
-            status=upstream_response.status_code,
-            headers=[
-                (k, v) for k, v in upstream_response.headers.items()
-                if k.lower() not in ('connection', 'transfer-encoding')
-            ],
-        )
-        logger.info('[%s,%s,%s] Downstream response: %s', request_id, request_method, path, downstream_response)
-        downstream_response.autocorrect_location_header = False
-        downstream_response.call_on_close(close_upstream_response)
-
-        return downstream_response
+        return downstream_response_bytes(), upstream_response.status_code, [
+            (k, v) for k, v in upstream_response.headers.items()
+            if k.lower() not in ('connection', 'transfer-encoding')
+        ]
 
     return app
 
 
-if __name__ == "__main__":
+async def async_main():
     name = os.environ.get('APP_NAME', 'git-lfs-http-mirror')
     logging.basicConfig(stream=sys.stdout, level=os.environ.get('LOG_LEVEL', 'WARNING'))
     logger = logging.getLogger(name)
@@ -104,9 +94,16 @@ if __name__ == "__main__":
     upstream_root = os.environ['UPSTREAM_ROOT']
     logger.info('Serving from %s', upstream_root)
 
-    with httpx.Client(transport=httpx.HTTPTransport(retries=3)) as http_client:
-        serve(
+    config = Config()
+    config.bind = [os.environ.get('BIND', '0.0.0.0:8080')]
+
+    async with httpx.AsyncClient(transport=httpx.AsyncHTTPTransport(retries=3)) as http_client:
+        await serve(
             App(logger=logger, http_client=http_client, upstream_root=upstream_root, app_name=name),
-            host='0.0.0.0', port=int(os.environ.get('PORT', '8080')), threads=int(os.environ.get('NUM_THREADS', '64')),
+            config,
         )
     logger.info('Stopped server')
+
+
+if __name__ == "__main__":
+    asyncio.run(async_main())
