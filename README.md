@@ -22,3 +22,14 @@ LOG_LEVEL=INFO \
 PORT=8888 \
     python -m git_lfs_http_mirror
 ```
+
+The server configued as `UPSTREAM_ROOT` should be a static server, serving copies of git repositories. Each copy can be created using:
+
+```bash
+git clone --bare https://server.test/my-repo
+cd my-repo.git
+git lfs fetch
+git update-server-info
+````
+
+and then uploaded to the server in its own folder. If the server is S3, this can be done using the Upload folder feature in the AWS S3 Console.
