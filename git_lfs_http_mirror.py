@@ -96,7 +96,7 @@ def App(logger, http_client, upstream_root, app_name):
 
 
 if __name__ == "__main__":
-    name = os.environ.get('NAME', 'git-lfs-proxy')
+    name = os.environ.get('APP_NAME', 'git-lfs-http-mirror')
     logging.basicConfig(stream=sys.stdout, level=os.environ.get('LOG_LEVEL', 'WARNING'))
     logger = logging.getLogger(name)
 
