@@ -1,10 +1,8 @@
 import json
 import logging
 import os
-import re
 import string
 import sys
-import urllib.parse
 
 import httpx
 from flask import Flask, Response, render_template
