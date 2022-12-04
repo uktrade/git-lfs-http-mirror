@@ -107,6 +107,6 @@ if __name__ == "__main__":
     with httpx.Client(transport=httpx.HTTPTransport(retries=3)) as http_client:
         serve(
             App(logger=logger, http_client=http_client, upstream_root=upstream_root, app_name=name),
-            host='0.0.0.0', port=int(os.environ.get('PORT', '8080')), threads=16,
+            host='0.0.0.0', port=int(os.environ.get('PORT', '8080')), threads=int(os.environ.get('NUM_THREADS', '64')),
         )
     logger.info('Stopped server')
