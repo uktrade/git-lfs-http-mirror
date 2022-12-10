@@ -1,10 +1,12 @@
 import asyncio
+import functools
 import json
 import logging
-import os
+import signal
 import string
 import sys
 
+import click
 import httpx
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
@@ -85,29 +87,58 @@ def App(logger, http_client, upstream_root, app_name):
     return app
 
 
-async def async_main():
-    name = os.environ.get('APP_NAME', 'git-lfs-http-mirror')
-    log_level = os.environ.get('LOG_LEVEL', 'WARNING')
+async def async_main(upstream_root, bind, log_level, command):
+    name = 'git-lfs-http-mirror'
+
     handler = logging.StreamHandler(stream=sys.stdout)
     handler.setLevel(level=log_level)
     logger = logging.getLogger(name)
     logger.addHandler(handler)
 
     logger.info('Starting server')
-    upstream_root = os.environ['UPSTREAM_ROOT']
     logger.info('Serving from %s', upstream_root)
 
     config = Config()
-    config.bind = [os.environ.get('BIND', '0.0.0.0:8080')]
+    config.bind = [bind]
     config.loglevel = log_level
 
+    loop = asyncio.get_event_loop()
+
+    def signal_handler(signal, server_shutdown, subprocess):
+        server_shutdown.set()
+        try:
+            subprocess.send_signal(signal)
+        except ProcessLookupError:
+            pass
+
     async with httpx.AsyncClient(transport=httpx.AsyncHTTPTransport(retries=3)) as http_client:
-        await serve(
-            App(logger=logger, http_client=http_client, upstream_root=upstream_root, app_name=name),
-            config,
+        server_shutdown = asyncio.Event()
+        subprocess = await asyncio.create_subprocess_exec(*command)
+        loop.add_signal_handler(signal.SIGINT, functools.partial(signal_handler, signal.SIGINT, server_shutdown, subprocess))
+        loop.add_signal_handler(signal.SIGTERM, functools.partial(signal_handler, signal.SIGTERM, server_shutdown, subprocess))
+
+        server = asyncio.Task(
+            serve(
+                App(logger=logger, http_client=http_client, upstream_root=upstream_root, app_name=name),
+                config,
+                shutdown_trigger=server_shutdown.wait
+            )
         )
+
+        await subprocess.wait()
+        server_shutdown.set()
+        await server
+
     logger.info('Stopped server')
 
 
+@click.command()
+@click.option('--upstream-root', required=True)
+@click.option('--bind', default='0.0.0.0:8080')
+@click.option('--log-level', default='WARNING')
+@click.argument('command', nargs=-1)
+def main(upstream_root, bind, log_level, command):
+    asyncio.run(async_main(upstream_root, bind, log_level, command))
+
 if __name__ == "__main__":
-    asyncio.run(async_main())
+    main()
