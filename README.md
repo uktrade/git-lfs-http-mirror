@@ -23,6 +23,23 @@ python -m git_lfs_http_mirror
     -- git clone http://127.0.0.1:8080/my-repo
 ```
 
+You can make this slightly less verbose my making a wrapper bash script. If the below is in an executable file `glfsm` in your PATH
+
+```bash
+#!/usr/bin/env bash
+
+exec python -m git_lfs_http_mirror \
+    --upstream-root 'https://my-bucket.s3.eu-west-2.amazonaws.com/a-folder' \
+    --bind '127.0.0.1:8080' \
+    $@
+```
+
+then you can call
+
+```bash
+glfsm -- git clone http://127.0.0.1:8080/my-repo
+````
+
 The server configued as `upstream_root` should be a static server, serving copies of git repositories, for example S3. Each copy can be created using:
 
 ```bash
