@@ -18,7 +18,7 @@ Configuration is by command line arguments
 
 ```bash
 python -m git_lfs_http_mirror
-    --upstream_root 'https://my-bucket.s3.eu-west-2.amazonaws.com/a-folder'
+    --upstream-root 'https://my-bucket.s3.eu-west-2.amazonaws.com/a-folder'
     --bind '127.0.0.1:8080'
     -- git clone http://127.0.0.1:8080/my-repo
 ```
