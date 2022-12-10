@@ -4,7 +4,7 @@ Python wrapper for git that allows it to read a GET-only HTTP mirror of reposito
 
 This means you can use S3 to host mirrors of LFS repositories, without additional infrastructure. However, no authentication mechanism is currently supported. From the point of view of the calling code, it must be a publically readable bucket.
 
-It works by temporarily firing up a LFS server during the lifetime of the git command.
+It works by temporarily firing up an LFS server during the lifetime of the git command.
 
 
 ## Installation
