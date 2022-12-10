@@ -87,8 +87,11 @@ def App(logger, http_client, upstream_root, app_name):
 
 async def async_main():
     name = os.environ.get('APP_NAME', 'git-lfs-http-mirror')
-    logging.basicConfig(stream=sys.stdout, level=os.environ.get('LOG_LEVEL', 'WARNING'))
+    log_level = os.environ.get('LOG_LEVEL', 'WARNING')
+    handler = logging.StreamHandler(stream=sys.stdout)
+    handler.setLevel(level=log_level)
     logger = logging.getLogger(name)
+    logger.addHandler(handler)
 
     logger.info('Starting server')
     upstream_root = os.environ['UPSTREAM_ROOT']
@@ -96,6 +99,7 @@ async def async_main():
 
     config = Config()
     config.bind = [os.environ.get('BIND', '0.0.0.0:8080')]
+    config.loglevel = log_level
 
     async with httpx.AsyncClient(transport=httpx.AsyncHTTPTransport(retries=3)) as http_client:
         await serve(
