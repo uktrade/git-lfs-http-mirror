@@ -22,7 +22,7 @@ setuptools.setup(
     ],
     python_requires='>=3.7.4',
     install_requires=[
-        'click8>=8.0.1',
+        'click>=8.0.1',
         'httpx>=0.23.1',
         'hypercorn>=0.14.3',
         'quart>=0.18.3',
