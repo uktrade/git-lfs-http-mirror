@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "git-lfs-http-mirror"
+version = "0.0.0.dev0"
+authors = [
+  { name="Department for International Trade", email="sre@digital.trade.gov.uk" },
+]
+description = "Simple Python server to serve a read only HTTP mirror of git repositories that use Large File Storage (LFS)"
+readme = "README.md"
+requires-python = ">=3.7.4"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+dependencies = [
+    "click>=8.0.1",
+    "httpx>=0.23.1",
+    "hypercorn>=0.14.3",
+    "quart>=0.18.3",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/uktrade/git-lfs-http-mirror"
+
+[tool.hatch.build]
+include = [
+  "git_lfs_http_mirror.py"
+]
